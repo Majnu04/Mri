@@ -17,11 +17,7 @@
   },
   "functions": {
     "app.py": {
-      "maxDuration": 60,
-      "memory": 1024
+      "maxDuration": 30
     }
-  },
-  "limits": {
-    "duration": 60000
   }
 }

@@ -14,9 +14,19 @@ import trimesh
 import meshio
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB for local development
+
+# Environment-specific configuration
+is_production = os.environ.get('VERCEL') is not None
+if is_production:
+    # Vercel production settings
+    app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB
+    app.config['UPLOAD_TIMEOUT'] = 30  # 30 seconds
+else:
+    # Local development settings
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB
+    app.config['UPLOAD_TIMEOUT'] = 1800  # 30 minutes
+
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-app.config['UPLOAD_TIMEOUT'] = 1800  # 30 minutes
 
 # Global storage for current session data
 current_volume = None
@@ -26,17 +36,20 @@ current_cyst_mask = None
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
+    is_production = os.environ.get('VERCEL') is not None
+    max_size_label = '2GB' if is_production else '10GB'
+    environment = 'production (Vercel)' if is_production else 'local development'
+    
     return jsonify({
         'error': 'File too large',
-        'message': 'The uploaded file exceeds the maximum size limit of 10GB for local development. For Vercel deployment, the limit is 2GB.',
-        'max_size_local': '10GB',
-        'max_size_production': '2GB',
+        'message': f'The uploaded file exceeds the maximum size limit of {max_size_label} for {environment}.',
+        'max_size': max_size_label,
+        'environment': environment,
         'suggestions': [
-            'For files > 2GB: Use local development environment',
-            'Split large DICOM series into smaller ZIP files',
-            'Compress DICOM files more aggressively',
-            'Remove unnecessary slices from the series',
-            'Use DICOM compression tools'
+            'Compress your DICOM files into a smaller ZIP archive',
+            'Reduce the number of slices in your series',
+            'Use DICOM compression tools',
+            'For files > 2GB: Run the application locally' if is_production else 'Split large files into smaller chunks'
         ]
     }), 413
 
@@ -418,6 +431,18 @@ def volume_info():
         return jsonify({'error': f'Internal error: {str(e)}', 'loaded': False}), 500
 
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Vercel deployment"""
+    is_production = os.environ.get('VERCEL') is not None
+    return jsonify({
+        'status': 'healthy',
+        'environment': 'production' if is_production else 'development',
+        'max_file_size': '2GB' if is_production else '10GB',
+        'message': 'MRI 3D Reconstruction service is running'
+    })
+
+
 @app.route('/upload', methods=['POST'])
 def upload():
     """Accept a ZIP file of DICOMs and process them"""
@@ -439,14 +464,19 @@ def upload():
     
     print(f"Processing file: {f.filename} (Size: {file_size / (1024*1024):.2f} MB)")
     
-    # Check if file size exceeds limit (10GB for local, 2GB for production)
-    max_size = 10 * 1024 * 1024 * 1024  # 10GB for local development
+    # Check if file size exceeds limit based on environment
+    is_production = os.environ.get('VERCEL') is not None
+    max_size = 2 * 1024 * 1024 * 1024 if is_production else 10 * 1024 * 1024 * 1024  # 2GB prod, 10GB local
+    max_size_label = '2GB' if is_production else '10GB'
+    environment = 'production (Vercel)' if is_production else 'local development'
+    
     if file_size > max_size:
         return jsonify({
             'error': 'File too large',
-            'message': f'File size ({file_size / (1024*1024):.2f} MB) exceeds the maximum limit of {max_size / (1024*1024*1024):.1f} GB',
+            'message': f'File size ({file_size / (1024*1024):.2f} MB) exceeds the maximum limit of {max_size_label} for {environment}',
             'file_size_mb': round(file_size / (1024*1024), 2),
-            'max_size_gb': max_size / (1024*1024*1024)
+            'max_size': max_size_label,
+            'environment': environment
         }), 413
     
     try:
