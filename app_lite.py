@@ -6,7 +6,6 @@ from flask import Flask, request, render_template, send_file, jsonify, url_for
 import tempfile
 import numpy as np
 import pydicom
-import scipy.io
 import h5py
 
 app = Flask(__name__)
@@ -29,18 +28,13 @@ current_volume = None
 current_segmentation = None
 
 def load_mat_file(mat_path):
-    """Load MRI volume from .mat file with robust error handling for both v7.0 and v7.3 formats"""
+    """Load MRI volume from .mat file using only h5py (for MATLAB v7.3 files)"""
     try:
         print(f"Loading .mat file: {mat_path}")
         
-        # Try loading with scipy.io first (for older MATLAB files)
+        # Use h5py for MATLAB v7.3 files (most modern .mat files)
+        mat_data = {}
         try:
-            mat_data = scipy.io.loadmat(mat_path)
-            print("Loaded with scipy.io (MATLAB v7.0 format)")
-        except NotImplementedError:
-            # If that fails, try h5py for MATLAB v7.3 files
-            print("Trying h5py for MATLAB v7.3 format...")
-            mat_data = {}
             with h5py.File(mat_path, 'r') as f:
                 def extract_data(name, obj):
                     if isinstance(obj, h5py.Dataset):
@@ -54,6 +48,12 @@ def load_mat_file(mat_path):
                             print(f"Skipping dataset {name}: {str(e)}")
                 
                 f.visititems(extract_data)
+                
+        except Exception as e:
+            # If h5py fails, the file might be an older MATLAB format
+            # For production deployment, we'll only support v7.3 files
+            print(f"Could not load as HDF5/MATLAB v7.3 file: {str(e)}")
+            raise ValueError("Only MATLAB v7.3 format (.mat) files are supported in production mode. Please re-save your .mat file in v7.3 format.")
         
         # Look for volume data with various common variable names
         volume_candidates = ['volume', 'data', 'image', 'mri', 'brain', 'img', 'vol']
@@ -97,13 +97,25 @@ def simple_threshold_segmentation(volume):
     # Create binary mask
     mask = volume > threshold
     
-    # Simple morphological operations using numpy
-    # Basic erosion and dilation
-    from scipy.ndimage import binary_erosion, binary_dilation
-    mask = binary_erosion(mask, iterations=1)
-    mask = binary_dilation(mask, iterations=2)
+    # Basic morphological operations using numpy only
+    # Simple erosion and dilation with numpy operations
+    kernel = np.ones((3, 3, 3), dtype=bool)
     
-    return mask
+    # Basic erosion (minimum filter)
+    eroded = np.zeros_like(mask)
+    for i in range(1, mask.shape[0]-1):
+        for j in range(1, mask.shape[1]-1):
+            for k in range(1, mask.shape[2]-1):
+                eroded[i,j,k] = np.all(mask[i-1:i+2, j-1:j+2, k-1:k+2])
+    
+    # Basic dilation (maximum filter)
+    dilated = np.zeros_like(eroded)
+    for i in range(1, eroded.shape[0]-1):
+        for j in range(1, eroded.shape[1]-1):
+            for k in range(1, eroded.shape[2]-1):
+                dilated[i,j,k] = np.any(eroded[i-1:i+2, j-1:j+2, k-1:k+2])
+    
+    return dilated
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
