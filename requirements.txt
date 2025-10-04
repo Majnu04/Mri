@@ -1,0 +1,12 @@
+flask
+pydicom
+numpy
+scikit-image
+scipy
+trimesh
+meshio
+pyvista
+vtk
+python-multipart
+pillow
+h5py
