@@ -411,6 +411,13 @@
           <h3>Upload DICOM Series</h3>
           <p>Drag and drop your ZIP file here or click to browse</p>
           <input type="file" id="dicomZip" name="dicom_zip" accept=".zip" class="file-input" />
+          <div id="fileInfo" class="file-info" style="display: none; margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 8px; font-size: 14px;">
+            <div id="fileName"></div>
+            <div id="fileSize"></div>
+            <div id="fileSizeWarning" style="color: #d32f2f; display: none;">
+              <i class="fas fa-exclamation-triangle"></i> File size exceeds 2GB limit
+            </div>
+          </div>
           <div style="margin-top: 20px;">
             <button type="button" class="upload-button" onclick="document.getElementById('dicomZip').click()">
               <i class="fas fa-folder-open"></i> Choose ZIP File
@@ -561,7 +568,7 @@
         const files = e.dataTransfer.files;
         if (files.length > 0 && files[0].name.endsWith('.zip')) {
           document.getElementById('dicomZip').files = files;
-          updateFileDisplay(files[0].name);
+          updateFileDisplay(files[0]);
         } else {
           updateStatus('Please drop a ZIP file containing DICOM (.dcm) or MATLAB (.mat) files', 'error');
         }
@@ -570,20 +577,41 @@
       // File input change handler
       document.getElementById('dicomZip').addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
-          updateFileDisplay(e.target.files[0].name);
+          updateFileDisplay(e.target.files[0]);
         }
       });
 
-      function updateFileDisplay(filename) {
+      function updateFileDisplay(file) {
         const uploadIcon = uploadArea.querySelector('.upload-icon');
         const heading = uploadArea.querySelector('h3');
         const description = uploadArea.querySelector('p');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const fileSizeWarning = document.getElementById('fileSizeWarning');
         
         uploadIcon.innerHTML = '<i class="fas fa-file-archive"></i>';
         heading.textContent = 'File Selected';
-        description.innerHTML = `<strong>${filename}</strong><br>Ready to process`;
+        description.innerHTML = `<strong>${file.name}</strong><br>Ready to process`;
         uploadArea.style.borderColor = '#27ae60';
         uploadArea.style.background = '#d4edda';
+        
+        // Display file information
+        fileName.innerHTML = `<i class="fas fa-file"></i> <strong>File:</strong> ${file.name}`;
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+        fileSize.innerHTML = `<i class="fas fa-hdd"></i> <strong>Size:</strong> ${sizeInMB} MB`;
+        
+        // Check file size and show warning if too large
+        const maxSize = 2 * 1024 * 1024 * 1024; // 2GB
+        if (file.size > maxSize) {
+          fileSizeWarning.style.display = 'block';
+          uploadArea.style.borderColor = '#e74c3c';
+          uploadArea.style.background = '#f8d7da';
+        } else {
+          fileSizeWarning.style.display = 'none';
+        }
+        
+        fileInfo.style.display = 'block';
       }
 
       function updateStatus(message, type = '') {
@@ -631,15 +659,40 @@
           return;
         }
         
-        updateStatus('Uploading and processing medical imaging data...', 'processing');
+        // Check file size on client side (2GB limit)
+        const maxSize = 2 * 1024 * 1024 * 1024; // 2GB
+        if (file.size > maxSize) {
+          updateStatus(`File too large (${(file.size / (1024*1024)).toFixed(1)} MB). Maximum size is 2GB. Please compress your files or reduce the number of slices.`, 'error');
+          return;
+        }
+        
+        updateStatus(`Uploading ${(file.size / (1024*1024)).toFixed(1)} MB file and processing medical imaging data...`, 'processing');
         const fd = new FormData();
         fd.append('dicom_zip', file);
         
         try {
-          const resp = await fetch('/upload', { method: 'POST', body: fd });
+          const resp = await fetch('/upload', { 
+            method: 'POST', 
+            body: fd,
+            // Add timeout for large files
+            signal: AbortSignal.timeout(300000) // 5 minutes
+          });
+          
           if (!resp.ok) {
-            const errorText = await resp.text();
-            updateStatus('Processing failed: ' + errorText, 'error');
+            let errorMessage = 'Upload failed';
+            try {
+              const errorData = await resp.json();
+              if (errorData.message) {
+                errorMessage = errorData.message;
+                if (errorData.suggestions) {
+                  errorMessage += '\n\nSuggestions:\n' + errorData.suggestions.map(s => '• ' + s).join('\n');
+                }
+              }
+            } catch {
+              const errorText = await resp.text();
+              errorMessage = errorText;
+            }
+            updateStatus('Processing failed: ' + errorMessage, 'error');
             return;
           }
           

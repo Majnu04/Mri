@@ -14,13 +14,28 @@ import trimesh
 import meshio
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1GB
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+app.config['UPLOAD_TIMEOUT'] = 300  # 5 minutes
 
 # Global storage for current session data
 current_volume = None
 current_segmentation = None
 current_tumor_mask = None
 current_cyst_mask = None
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({
+        'error': 'File too large',
+        'message': 'The uploaded file exceeds the maximum size limit of 2GB. Please try with a smaller file or compress your DICOM series.',
+        'max_size': '2GB',
+        'suggestions': [
+            'Compress your DICOM files into a ZIP archive',
+            'Reduce the number of slices in your series',
+            'Use a different file format if possible'
+        ]
+    }), 413
 
 
 def load_mat_file(mat_path):
@@ -408,13 +423,28 @@ def upload():
     print("Upload request received")
     
     if 'dicom_zip' not in request.files:
-        return 'missing dicom_zip', 400
+        return jsonify({'error': 'No file provided', 'message': 'Please select a file to upload'}), 400
     
     f = request.files['dicom_zip']
     if f.filename == '':
-        return 'no file selected', 400
+        return jsonify({'error': 'No file selected', 'message': 'Please select a valid file'}), 400
     
-    print(f"Processing file: {f.filename}")
+    # Check file size before processing
+    f.seek(0, 2)  # Seek to end
+    file_size = f.tell()
+    f.seek(0)  # Reset to beginning
+    
+    print(f"Processing file: {f.filename} (Size: {file_size / (1024*1024):.2f} MB)")
+    
+    # Check if file size exceeds limit (2GB)
+    max_size = 2 * 1024 * 1024 * 1024  # 2GB
+    if file_size > max_size:
+        return jsonify({
+            'error': 'File too large',
+            'message': f'File size ({file_size / (1024*1024):.2f} MB) exceeds the maximum limit of {max_size / (1024*1024*1024):.1f} GB',
+            'file_size_mb': round(file_size / (1024*1024), 2),
+            'max_size_gb': max_size / (1024*1024*1024)
+        }), 413
     
     try:
         with tempfile.TemporaryDirectory() as tmp:
