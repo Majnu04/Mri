@@ -598,7 +598,12 @@ def cleanup_temp_files():
 atexit.register(cleanup_temp_files)
 
 if __name__ == '__main__':
-    print("🏥 Starting 3D MRI Brain Tumor Visualization Application...")
-    print("🌐 Server will be available at: http://localhost:5000")
-    print("📊 Ready to process DICOM and MATLAB files!")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    is_production = os.environ.get('VERCEL') is not None
+    if not is_production:
+        print("🏥 Starting 3D MRI Brain Tumor Visualization Application...")
+        print("🌐 Server will be available at: http://localhost:5000")
+        print("📊 Ready to process DICOM and MATLAB files!")
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    else:
+        # Production mode for Vercel
+        app.run(debug=False)
