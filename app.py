@@ -521,7 +521,8 @@ import atexit
 def cleanup_temp_files():
     """Clean up temporary mesh files on exit"""
     try:
-        workspace_dir = os.path.dirname(os.path.abspath(__file__))
+        import os
+        workspace_dir = os.getcwd()  # Use current working directory instead of __file__
         temp_dir = os.path.join(workspace_dir, 'temp_meshes')
         if os.path.exists(temp_dir):
             import shutil
@@ -534,4 +535,7 @@ def cleanup_temp_files():
 atexit.register(cleanup_temp_files)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("🏥 Starting 3D MRI Brain Tumor Visualization Application...")
+    print("🌐 Server will be available at: http://localhost:5000")
+    print("📊 Ready to process DICOM and MATLAB files!")
+    app.run(debug=True, host='0.0.0.0', port=5000)
