@@ -695,16 +695,15 @@
           return;
         }
         
-        updateStatus(`Uploading ${(file.size / (1024*1024)).toFixed(1)} MB file and processing medical imaging data...`, 'processing');
+        updateStatus(`Starting upload of ${(file.size / (1024*1024)).toFixed(1)} MB file...`, 'processing');
         const fd = new FormData();
-        fd.append('dicom_zip', file);
+        fd.append('file', file);
         
         try {
+          // Start upload with new progress tracking
           const resp = await fetch('/upload', { 
             method: 'POST', 
-            body: fd,
-            // Add timeout for large files
-            signal: AbortSignal.timeout(300000) // 5 minutes
+            body: fd
           });
           
           if (!resp.ok) {
@@ -713,39 +712,87 @@
               const errorData = await resp.json();
               if (errorData.message) {
                 errorMessage = errorData.message;
-                if (errorData.suggestions) {
-                  errorMessage += '\n\nSuggestions:\n' + errorData.suggestions.map(s => '• ' + s).join('\n');
-                }
               }
             } catch {
               const errorText = await resp.text();
               errorMessage = errorText;
             }
-            updateStatus('Processing failed: ' + errorMessage, 'error');
+            updateStatus('Upload failed: ' + errorMessage, 'error');
             return;
           }
           
-          const blob = await resp.blob();
-          meshesBlobUrl = URL.createObjectURL(blob);
-          downloadBtn.onclick = () => { 
-            const a = document.createElement('a'); 
-            a.href = meshesBlobUrl; 
-            a.download = 'meshes.zip'; 
-            a.click(); 
+          const uploadResult = await resp.json();
+          if (!uploadResult.success) {
+            updateStatus('Upload failed: ' + (uploadResult.error || 'Unknown error'), 'error');
+            return;
+          }
+          
+          // Start progress tracking
+          const sessionId = uploadResult.session_id;
+          updateStatus('Upload successful! Processing medical imaging data...', 'processing');
+          
+          // Poll for progress updates  
+          const maxAttempts = 300;
+          let attempts = 0;
+          
+          const checkProgress = async () => {
+            try {
+              const progressResp = await fetch(`/progress/${sessionId}`);
+              const progress = await progressResp.json();
+              
+              if (progress.status === 'complete') {
+                updateStatus('Processing complete! Loading 3D visualization...', 'success');
+                
+                // Load meshes and volume info
+                const meshResp = await fetch('/get_meshes');
+                if (meshResp.ok) {
+                  const blob = await meshResp.blob();
+                  meshesBlobUrl = URL.createObjectURL(blob);
+                  downloadBtn.onclick = () => { 
+                    const a = document.createElement('a'); 
+                    a.href = meshesBlobUrl; 
+                    a.download = 'meshes.zip'; 
+                    a.click(); 
+                  };
+                  
+                  const infoResp = await fetch('/volume_info');
+                  if (infoResp.ok) {
+                    volumeInfo = await infoResp.json();
+                    
+                    if (volumeInfo.loaded) {
+                      setupSliceNavigation();
+                      await loadAndRenderMeshesFromZip(await blob.arrayBuffer());
+                      mainContent.style.display = 'block';
+                      updateStatus('Analysis complete! Explore your MRI data using the controls below.', 'success');
+                    }
+                  }
+                }
+                return;
+              }
+              
+              if (progress.status === 'error') {
+                updateStatus('Processing failed: ' + progress.message, 'error');
+                return;
+              }
+              
+              if (progress.status === 'processing' || progress.status === 'starting') {
+                const progressPercentage = Math.max(0, Math.min(100, progress.progress || 0));
+                updateStatus(`${progress.message || 'Processing...'} (${progressPercentage}%)`, 'processing');
+                
+                if (attempts < maxAttempts) {
+                  attempts++;
+                  setTimeout(checkProgress, 1000);
+                } else {
+                  updateStatus('Processing timeout. Please try again.', 'error');
+                }
+              }
+              
+            } catch (error) {
+              updateStatus('Progress tracking failed: ' + error.message, 'error');
+            }
           };
           
-          updateStatus('Processing complete. Loading visualization...', 'success');
-          
-          // Get volume info
-          const infoResp = await fetch('/volume_info');
-          volumeInfo = await infoResp.json();
-          
-          if (volumeInfo.loaded) {
-            setupSliceNavigation();
-            await loadAndRenderMeshesFromZip(await blob.arrayBuffer());
-            mainContent.style.display = 'block';
-            updateStatus('Analysis complete! Explore your MRI data using the controls below.', 'success');
-          }
+          checkProgress();
         } catch (error) {
           updateStatus('Error: ' + error.message, 'error');
         }
