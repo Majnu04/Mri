@@ -14,9 +14,9 @@ import trimesh
 import meshio
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024  # 2GB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB for local development
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-app.config['UPLOAD_TIMEOUT'] = 300  # 5 minutes
+app.config['UPLOAD_TIMEOUT'] = 1800  # 30 minutes
 
 # Global storage for current session data
 current_volume = None
@@ -28,12 +28,15 @@ current_cyst_mask = None
 def request_entity_too_large(error):
     return jsonify({
         'error': 'File too large',
-        'message': 'The uploaded file exceeds the maximum size limit of 2GB. Please try with a smaller file or compress your DICOM series.',
-        'max_size': '2GB',
+        'message': 'The uploaded file exceeds the maximum size limit of 10GB for local development. For Vercel deployment, the limit is 2GB.',
+        'max_size_local': '10GB',
+        'max_size_production': '2GB',
         'suggestions': [
-            'Compress your DICOM files into a ZIP archive',
-            'Reduce the number of slices in your series',
-            'Use a different file format if possible'
+            'For files > 2GB: Use local development environment',
+            'Split large DICOM series into smaller ZIP files',
+            'Compress DICOM files more aggressively',
+            'Remove unnecessary slices from the series',
+            'Use DICOM compression tools'
         ]
     }), 413
 
@@ -436,8 +439,8 @@ def upload():
     
     print(f"Processing file: {f.filename} (Size: {file_size / (1024*1024):.2f} MB)")
     
-    # Check if file size exceeds limit (2GB)
-    max_size = 2 * 1024 * 1024 * 1024  # 2GB
+    # Check if file size exceeds limit (10GB for local, 2GB for production)
+    max_size = 10 * 1024 * 1024 * 1024  # 10GB for local development
     if file_size > max_size:
         return jsonify({
             'error': 'File too large',
