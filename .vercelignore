@@ -1,0 +1,51 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Development files
+.git/
+.github/
+requirements-vercel.txt
+runtime.txt
+
+# Cache and temp files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large dataset files (keep small samples)
+brainTumorData/
+brain_tumor_subset.zip
+
+# Temporary files
+temp_meshes/
+*.tmp
+*.temp
