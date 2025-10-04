@@ -1,6 +1,6 @@
-from app_lite import app
+from app_minimal import app
 
 # This file is used as an entry point for Vercel deployment
-# Uses the lightweight version (app_lite.py) for production
+# Uses the minimal version (app_minimal.py) for maximum compatibility
 if __name__ == "__main__":
     app.run()
