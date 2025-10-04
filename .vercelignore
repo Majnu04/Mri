@@ -3,6 +3,9 @@
 venv/
 env/
 
+# Heavy application files (use app_lite.py for Vercel)
+app.py
+
 # Development files
 .git/
 .github/

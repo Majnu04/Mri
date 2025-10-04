@@ -6,12 +6,19 @@ from flask import Flask, request, render_template, send_file, jsonify, url_for
 import tempfile
 import numpy as np
 import pydicom
-from skimage import exposure, filters, measure
-from scipy import ndimage
 import scipy.io
 import h5py
-import trimesh
-import meshio
+
+# Conditional imports for heavy dependencies
+try:
+    from skimage import exposure, filters, measure
+    from scipy import ndimage
+    import trimesh
+    import meshio
+    HEAVY_PROCESSING_AVAILABLE = True
+except ImportError:
+    HEAVY_PROCESSING_AVAILABLE = False
+    # Lightweight fallbacks will be provided
 
 app = Flask(__name__)
 
