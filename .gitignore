@@ -56,3 +56,6 @@ instance/
 # Medical imaging temporary files
 *.dcm.tmp
 *.mat.tmp
+
+# Vercel
+.vercel
