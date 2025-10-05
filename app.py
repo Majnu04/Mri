@@ -123,6 +123,35 @@ def load_mat_file(mat_path):
         if volume_data is None:
             raise ValueError(f"No suitable volume data found in .mat file. Available keys: {list(mat_data.keys())}")
         
+        # Ensure we have a numpy array, not a dictionary or other type
+        if not isinstance(volume_data, np.ndarray):
+            if isinstance(volume_data, dict):
+                # Try to extract from nested dictionary structure
+                print(f"Volume data is a dictionary with keys: {list(volume_data.keys())}")
+                for sub_key in ['data', 'image', 'volume', 'img']:
+                    if sub_key in volume_data:
+                        potential_data = volume_data[sub_key]
+                        if isinstance(potential_data, np.ndarray) and potential_data.size > 1000:
+                            volume_data = potential_data
+                            print(f"Extracted volume data from nested key '{sub_key}' with shape: {volume_data.shape}")
+                            break
+                else:
+                    # Try the first numpy array we find
+                    for key, value in volume_data.items():
+                        if isinstance(value, np.ndarray) and value.size > 1000:
+                            volume_data = value
+                            print(f"Using volume data from nested key '{key}' with shape: {volume_data.shape}")
+                            break
+                    else:
+                        raise ValueError(f"No numpy array found in nested dictionary structure")
+            else:
+                # Try to convert to numpy array
+                try:
+                    volume_data = np.array(volume_data)
+                    print(f"Converted data to numpy array with shape: {volume_data.shape}")
+                except Exception as e:
+                    raise ValueError(f"Cannot convert volume data to numpy array: {type(volume_data)}, error: {str(e)}")
+        
         # Ensure proper data type
         volume_data = volume_data.astype(np.float32)
         
@@ -184,7 +213,17 @@ def load_volume_from_directory(directory):
     if mat_files:
         # Process .mat files
         if len(mat_files) == 1:
-            return load_mat_file(mat_files[0])
+            print(f"Loading single .mat file: {mat_files[0]}")
+            volume_result = load_mat_file(mat_files[0])
+            print(f"Result from load_mat_file: type={type(volume_result)}")
+            if hasattr(volume_result, 'shape'):
+                print(f"Volume shape: {volume_result.shape}")
+            else:
+                print(f"⚠️ Result has no shape attribute!")
+                if isinstance(volume_result, dict):
+                    print(f"Result is a dictionary with keys: {list(volume_result.keys())}")
+                    raise ValueError(f"load_mat_file returned a dictionary instead of numpy array")
+            return volume_result
         else:
             # Multiple .mat files - try to load and stack them into a volume
             print(f"Processing {len(mat_files)} .mat files...")
@@ -376,6 +415,23 @@ def dicom_to_volume(dicom_files):
 
 def enhanced_segmentation(volume):
     """Enhanced segmentation to detect tumors, cysts, and other anomalies"""
+    
+    # Type checking and debugging
+    print(f"enhanced_segmentation input: type={type(volume)}")
+    if hasattr(volume, 'shape'):
+        print(f"Volume shape: {volume.shape}")
+    else:
+        print(f"⚠️ Volume has no shape attribute!")
+        if isinstance(volume, dict):
+            print(f"Volume is a dictionary with keys: {list(volume.keys())}")
+            raise ValueError("enhanced_segmentation received a dictionary instead of numpy array")
+        else:
+            raise ValueError(f"enhanced_segmentation received unexpected type: {type(volume)}")
+    
+    # Ensure we have a numpy array
+    if not isinstance(volume, np.ndarray):
+        raise ValueError(f"Volume must be a numpy array, got {type(volume)}")
+    
     vol = exposure.rescale_intensity(volume, out_range=(0, 1))
     
     # Multi-threshold approach for different anomaly types
@@ -411,20 +467,45 @@ def enhanced_segmentation(volume):
 def volume_to_mesh(volume, level=0.5):
     """Convert volume to mesh using marching cubes with error handling"""
     try:
-        verts, faces, normals, values = measure.marching_cubes(volume, level=level)
+        print(f"Running marching cubes on volume with shape {volume.shape}, level={level}")
+        
+        # Try different threshold levels if the first one fails
+        thresholds = [level, 0.3, 0.7, 0.1, 0.9]
+        
+        for threshold in thresholds:
+            try:
+                verts, faces, normals, values = measure.marching_cubes(volume, level=threshold)
+                if len(verts) > 0:
+                    print(f"Marching cubes successful with threshold {threshold}: {len(verts)} vertices, {len(faces)} faces")
+                    break
+            except Exception as e:
+                print(f"Marching cubes failed with threshold {threshold}: {e}")
+                continue
+        
         if len(verts) == 0:
             # Create a minimal mesh if no vertices found
             print(f"Warning: No vertices found at level {level}, creating empty mesh")
             verts = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
             faces = np.array([[0, 1, 2]])
         mesh = trimesh.Trimesh(vertices=verts, faces=faces)
-        return mesh
+        
+        # Convert trimesh to OBJ format string
+        obj_string = mesh.export(file_type='obj')
+        if isinstance(obj_string, bytes):
+            obj_string = obj_string.decode('utf-8')
+        
+        print(f"Generated OBJ string with {len(obj_string)} characters")
+        return obj_string
     except Exception as e:
         print(f"Error in marching cubes: {str(e)}")
-        # Return a minimal mesh
-        verts = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]])
-        faces = np.array([[0, 1, 2]])
-        return trimesh.Trimesh(vertices=verts, faces=faces)
+        # Return a minimal OBJ mesh as string
+        obj_fallback = """# Fallback mesh
+v 0 0 0
+v 1 0 0
+v 0 1 0
+f 1 2 3
+"""
+        return obj_fallback
 
 
 @app.route('/')
@@ -508,18 +589,25 @@ def volume_info():
     """Return information about the loaded volume"""
     try:
         global current_volume
+        print(f"🔍 volume_info called: current_volume is {current_volume is not None}")
+        if current_volume is not None:
+            print(f"🔍 current_volume shape: {current_volume.shape}")
+        
         if current_volume is None:
+            print("❌ volume_info: No volume loaded")
             return jsonify({'error': 'No volume loaded', 'loaded': False}), 400
         
-        return jsonify({
+        volume_info_data = {
             'shape': current_volume.shape,
             'total_slices': current_volume.shape[0],
             'loaded': True,
             'data_type': str(current_volume.dtype),
             'data_range': [float(current_volume.min()), float(current_volume.max())]
-        })
+        }
+        print(f"✅ volume_info returning: {volume_info_data}")
+        return jsonify(volume_info_data)
     except Exception as e:
-        print(f"Error in volume_info: {str(e)}")
+        print(f"❌ Error in volume_info: {str(e)}")
         return jsonify({'error': f'Internal error: {str(e)}', 'loaded': False}), 500
 
 
@@ -537,12 +625,26 @@ def health_check():
 @app.route('/progress/<session_id>')
 def get_progress(session_id):
     """Get processing progress for a session"""
+    print(f"Progress requested for session: {session_id}")
+    print(f"Available sessions: {list(processing_progress.keys())}")
+    
     progress_data = processing_progress.get(session_id, {
         'status': 'not_found', 
         'progress': 0, 
         'message': 'Session not found'
     })
+    
+    print(f"Returning progress: {progress_data}")
     return jsonify(progress_data)
+
+@app.route('/test')
+def test_endpoint():
+    """Test endpoint to verify server is responding"""
+    return jsonify({
+        'status': 'ok',
+        'message': 'Server is running',
+        'sessions': list(processing_progress.keys())
+    })
 
 
 @app.route('/upload', methods=['POST'])
@@ -618,6 +720,84 @@ def upload_file():
         }
         return jsonify({'error': str(e)}), 500
 
+def process_matlab_from_zip(file_path, session_id):
+    """Process MATLAB files from ZIP archive"""
+    try:
+        import tempfile
+        import shutil
+        from scipy.io import loadmat
+        
+        processing_progress[session_id].update({
+            'progress': 50,
+            'message': 'Extracting MATLAB files...'
+        })
+        
+        # Create temporary directory
+        temp_dir = tempfile.mkdtemp()
+        
+        try:
+            # Extract ZIP to temporary directory
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            processing_progress[session_id].update({
+                'progress': 60,
+                'message': 'Loading MATLAB data...'
+            })
+            
+            # Process extracted files
+            volume = load_volume_from_directory(temp_dir)
+            
+            processing_progress[session_id].update({
+                'progress': 70,
+                'message': 'Analyzing brain structure...'
+            })
+            
+            # Generate segmentation and meshes
+            segmentation, tumor_mask, cyst_mask = enhanced_segmentation(volume)
+            
+            processing_progress[session_id].update({
+                'progress': 80,
+                'message': 'Generating 3D models...'
+            })
+            
+            # Generate meshes
+            meshes = generate_meshes_for_volume(volume, tumor_mask, cyst_mask)
+            
+            processing_progress[session_id].update({
+                'progress': 90,
+                'message': 'Finalizing...'
+            })
+            
+            # Store results globally
+            global current_volume, current_segmentation, current_tumor_mask, current_cyst_mask
+            current_volume = volume
+            current_segmentation = segmentation  
+            current_tumor_mask = tumor_mask
+            current_cyst_mask = cyst_mask
+            
+            processing_progress[session_id] = {
+                'status': 'completed',
+                'progress': 100,
+                'message': 'MATLAB processing completed successfully!',
+                'volume_shape': volume.shape,
+                'has_anomalies': np.any(tumor_mask) or np.any(cyst_mask)
+            }
+            
+            return meshes
+            
+        finally:
+            # Clean up temporary directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            
+    except Exception as e:
+        processing_progress[session_id] = {
+            'status': 'error',
+            'progress': 0,
+            'message': f'MATLAB processing failed: {str(e)}'
+        }
+        raise e
+
 def process_large_file_from_path(file_path, filename, session_id):
     """Process large files from a saved file path with progress tracking and memory optimization"""
     global current_volume, current_segmentation, current_tumor_mask, current_cyst_mask
@@ -664,6 +844,8 @@ def process_large_file_from_path(file_path, filename, session_id):
         
         # Store volume data
         current_volume = volume_data
+        print(f"✅ STORED current_volume with shape: {current_volume.shape}")
+        print(f"✅ Global current_volume is now: {current_volume is not None}")
         
         # Perform segmentation with progress updates
         processing_progress[session_id].update({
@@ -672,10 +854,14 @@ def process_large_file_from_path(file_path, filename, session_id):
         })
         
         if HEAVY_PROCESSING_AVAILABLE:
+            print("🔍 Running enhanced segmentation...")
             final_mask, tumor_mask, cyst_mask = enhanced_segmentation(volume_data)
             current_tumor_mask = tumor_mask
             current_cyst_mask = cyst_mask
+            print(f"✅ STORED tumor_mask: {current_tumor_mask is not None}")
+            print(f"✅ STORED cyst_mask: {current_cyst_mask is not None}")
         else:
+            print("⚠️ Heavy processing not available, skipping segmentation")
             current_tumor_mask = None
             current_cyst_mask = None
         
@@ -718,26 +904,78 @@ def process_zip_chunked_from_path(file_path, session_id):
         
         # Process ZIP file
         dicom_files = []
+        mat_files = []
+        
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             file_list = zip_ref.namelist()
+            
+            # Count different file types
             dicom_count = 0
+            mat_count = 0
             
             for filename in file_list:
-                if filename.lower().endswith('.dcm') or not os.path.splitext(filename)[1]:
-                    dicom_count += 1
+                if filename.startswith('__MACOSX/') or filename.startswith('.'):
+                    continue  # Skip Mac metadata files
+                    
+                lower_filename = filename.lower()
+                
+                # Check for MATLAB files
+                if lower_filename.endswith('.mat'):
+                    mat_count += 1
+                    continue
+                
+                # Check for DICOM files (more flexible detection)
+                if (lower_filename.endswith('.dcm') or 
+                    lower_filename.endswith('.dicom') or 
+                    not os.path.splitext(filename)[1] or  # Files without extension
+                    lower_filename.endswith('.ima') or    # Some DICOM variants
+                    'dicom' in lower_filename):
+                    
+                    # Additional check: try to read as DICOM
+                    try:
+                        with zip_ref.open(filename) as dcm_file:
+                            # Try to read just the header to verify it's DICOM
+                            dcm_data = dcm_file.read(256)  # Read first 256 bytes
+                            if b'DICM' in dcm_data or len(dcm_data) > 128:  # Basic DICOM check
+                                dicom_count += 1
+                    except:
+                        continue
             
-            if dicom_count == 0:
-                raise ValueError("No DICOM files found in ZIP archive")
+            print(f"Found {dicom_count} DICOM files and {mat_count} MATLAB files")
             
-            processing_progress[session_id].update({
-                'progress': 40,
-                'message': f'Found {dicom_count} DICOM files. Loading...'
-            })
+            # Check if we have any supported files
+            if dicom_count == 0 and mat_count == 0:
+                raise ValueError("No DICOM (.dcm) or MATLAB (.mat) files found in ZIP archive")
+            
+            if mat_count > 0:
+                processing_progress[session_id].update({
+                    'progress': 40,
+                    'message': f'Found {mat_count} MATLAB files. Loading...'
+                })
+                # Process MATLAB files
+                return process_matlab_from_zip(file_path, session_id)
+            else:
+                processing_progress[session_id].update({
+                    'progress': 40,
+                    'message': f'Found {dicom_count} DICOM files. Loading...'
+                })
+                # Process DICOM files
             
             # Process DICOM files with progress updates
             processed_count = 0
             for filename in file_list:
-                if filename.lower().endswith('.dcm') or not os.path.splitext(filename)[1]:
+                if filename.startswith('__MACOSX/') or filename.startswith('.'):
+                    continue
+                    
+                lower_filename = filename.lower()
+                
+                # Use the same flexible DICOM detection
+                if (lower_filename.endswith('.dcm') or 
+                    lower_filename.endswith('.dicom') or 
+                    not os.path.splitext(filename)[1] or
+                    lower_filename.endswith('.ima') or
+                    'dicom' in lower_filename):
+                    
                     try:
                         with zip_ref.open(filename) as dcm_file:
                             dcm_data = dcm_file.read()
@@ -766,98 +1004,7 @@ def process_zip_chunked_from_path(file_path, session_id):
     except Exception as e:
         raise
 
-def process_large_file(file, session_id):
-    """Process large DICOM files with progress tracking and memory optimization"""
-    global current_volume, current_segmentation, current_tumor_mask, current_cyst_mask
-    
-    try:
-        # Update progress: Starting
-        processing_progress[session_id].update({
-            'status': 'processing',
-            'progress': 10,
-            'message': 'Reading file...'
-        })
-        
-        filename = file.filename.lower()
-        
-        if filename.endswith('.zip'):
-            # Process ZIP file with chunking
-            processing_progress[session_id].update({
-                'progress': 20,
-                'message': 'Extracting ZIP archive...'
-            })
-            
-            volume_data = process_zip_chunked(file, session_id)
-            
-        elif filename.endswith('.mat'):
-            # Process MATLAB file
-            processing_progress[session_id].update({
-                'progress': 20,
-                'message': 'Loading MATLAB file...'
-            })
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.mat') as temp_file:
-                file.save(temp_file.name)
-                volume_data = load_mat_file(temp_file.name)
-                os.unlink(temp_file.name)
-                
-        else:
-            raise ValueError(f"Unsupported file format: {filename}")
-        
-        if volume_data is None:
-            raise ValueError("Failed to extract volume data from file")
-        
-        # Update progress: Processing volume
-        processing_progress[session_id].update({
-            'progress': 50,
-            'message': 'Processing 3D volume...'
-        })
-        
-        # Store volume data
-        current_volume = volume_data
-        
-        # Perform segmentation with progress updates
-        processing_progress[session_id].update({
-            'progress': 70,
-            'message': 'Detecting tumors and anomalies...'
-        })
-        
-        if HEAVY_PROCESSING_AVAILABLE:
-            final_mask, tumor_mask, cyst_mask = enhanced_segmentation(volume_data)
-            current_tumor_mask = tumor_mask
-            current_cyst_mask = cyst_mask
-        else:
-            current_tumor_mask = None
-            current_cyst_mask = None
-        
-        # Final processing
-        processing_progress[session_id].update({
-            'progress': 90,
-            'message': 'Finalizing results...'
-        })
-        
-        # Store results
-        processing_results[session_id] = {
-            'volume_shape': volume_data.shape,
-            'has_tumors': current_tumor_mask is not None and np.any(current_tumor_mask),
-            'has_cysts': current_cyst_mask is not None and np.any(current_cyst_mask),
-            'processing_complete': True
-        }
-        
-        # Complete
-        processing_progress[session_id].update({
-            'status': 'complete',
-            'progress': 100,
-            'message': 'Processing complete! Ready for 3D visualization.'
-        })
-        
-    except Exception as e:
-        processing_progress[session_id].update({
-            'status': 'error',
-            'progress': 0,
-            'message': f'Processing failed: {str(e)}'
-        })
-        raise
+# Note: process_large_file function removed - using process_large_file_from_path instead
 
 def upload_old():
     """Accept a ZIP file of DICOMs and process them"""
@@ -993,6 +1140,37 @@ def upload_old():
         traceback.print_exc()
         return f'Processing error: {str(e)}', 500
 
+@app.route('/debug_globals')
+def debug_globals():
+    """Debug endpoint to check global variable states"""
+    global current_volume, current_tumor_mask, current_cyst_mask
+    
+    return jsonify({
+        'current_volume_loaded': current_volume is not None,
+        'current_volume_shape': list(current_volume.shape) if current_volume is not None else None,
+        'current_tumor_mask_loaded': current_tumor_mask is not None,
+        'current_cyst_mask_loaded': current_cyst_mask is not None,
+        'heavy_processing_available': HEAVY_PROCESSING_AVAILABLE
+    })
+
+@app.route('/test_mesh')
+def test_mesh():
+    """Test endpoint to generate a simple mesh for debugging"""
+    try:
+        # Create a simple test volume
+        test_volume = np.random.rand(10, 10, 10)
+        
+        # Generate a simple mesh
+        simple_mesh = generate_simple_mesh(test_volume)
+        
+        return jsonify({
+            'success': True,
+            'mesh_length': len(simple_mesh),
+            'mesh_preview': simple_mesh[:200] + '...' if len(simple_mesh) > 200 else simple_mesh
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/get_meshes')
 def get_meshes():
     """Generate and return mesh files for the current volume"""
@@ -1028,11 +1206,19 @@ def generate_meshes_for_volume(volume, tumor_mask, cyst_mask):
     mesh_data = {}
     
     try:
+        print(f"Generating meshes for volume shape: {volume.shape}")
+        print(f"HEAVY_PROCESSING_AVAILABLE: {HEAVY_PROCESSING_AVAILABLE}")
+        
         if HEAVY_PROCESSING_AVAILABLE:
             # Generate brain mesh
+            print("Generating brain mesh using marching cubes...")
             brain_mesh = volume_to_mesh(volume)
             if brain_mesh:
                 mesh_data['brain.obj'] = brain_mesh
+                print(f"Brain mesh generated, length: {len(brain_mesh)} characters")
+            else:
+                print("Brain mesh generation failed, using fallback")
+                mesh_data['brain.obj'] = generate_simple_mesh(volume)
             
             # Generate tumor mesh if available
             if tumor_mask is not None and np.any(tumor_mask):
