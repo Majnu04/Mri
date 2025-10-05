@@ -2,6 +2,10 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#4CAF50" />
     <title>MRI 3D Reconstruction - Medical Imaging Analysis</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -17,6 +21,12 @@
         min-height: 100vh;
         color: #2c3e50;
         line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        /* Mobile viewport fixes */
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        touch-action: manipulation;
       }
       
       .header {
@@ -66,9 +76,6 @@
       .upload-area:hover {
         border-color: #0056b3;
         background: #e9ecef;
-      }
-
-
         transform: translateY(-2px);
       }
       
@@ -291,6 +298,7 @@
         background: #ddd;
         outline: none;
         -webkit-appearance: none;
+        appearance: none;
         transition: all 0.3s ease;
       }
       
@@ -371,28 +379,435 @@
         margin-right: 8px;
       }
       
+      /* Mobile-first responsive design */
       @media (max-width: 768px) {
+        body {
+          font-size: 14px;
+          line-height: 1.4;
+        }
+        
+        /* Show mobile view switcher */
+        .mobile-view-switcher {
+          display: block !important;
+        }
+        
+        /* Mobile panel switching */
         .analysis-container {
           grid-template-columns: 1fr;
-          padding: 10px;
+          gap: 0;
+          padding: 0;
+          margin: 0;
+        }
+        
+        .panel-3d,
+        .panel-slice {
+          margin-bottom: 0;
+          border-radius: 0;
+          box-shadow: none;
+          border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .panel-3d {
+          display: block;
+        }
+        
+        .panel-slice {
+          display: none;
+        }
+        
+        .panel-3d.mobile-hidden {
+          display: none;
+        }
+        
+        .panel-slice.mobile-active {
+          display: block;
+        }
+        
+        .header {
+          padding: 15px 10px;
+          text-align: center;
         }
         
         .header h1 {
-          font-size: 1.8em;
+          font-size: 1.6em;
+          margin-bottom: 8px;
+          line-height: 1.2;
+        }
+        
+        .header .subtitle {
+          font-size: 0.95em;
+          margin-bottom: 15px;
+          padding: 0 10px;
+        }
+        
+        #envIndicator {
+          font-size: 11px !important;
+          padding: 3px 6px !important;
+          margin-top: 5px !important;
         }
         
         .upload-section {
-          margin: 10px;
-          padding: 20px;
+          margin: 15px 10px;
+          padding: 20px 15px;
+          border-radius: 12px;
+        }
+        
+        .upload-area {
+          padding: 25px 15px;
+          margin: 15px 0;
+          border-radius: 12px;
+        }
+        
+        .upload-icon {
+          font-size: 2.5em;
+          margin-bottom: 12px;
+        }
+        
+        .upload-area h3 {
+          font-size: 1.2em;
+          margin-bottom: 8px;
+        }
+        
+        .upload-area p {
+          font-size: 0.9em;
+          margin-bottom: 15px;
+        }
+        
+        .upload-button {
+          padding: 12px 20px;
+          font-size: 0.95em;
+          margin: 8px 5px;
+          border-radius: 8px;
+          min-width: 140px;
+        }
+        
+        .file-info {
+          font-size: 13px !important;
+          padding: 12px !important;
+          margin-top: 15px !important;
+        }
+        
+        .info-card {
+          margin: 15px 10px;
+          padding: 15px;
+          border-radius: 12px;
+          font-size: 13px;
+        }
+        
+        .info-card ul {
+          margin: 8px 0;
+          padding-left: 18px;
+        }
+        
+        .info-card li {
+          margin-bottom: 5px;
+          line-height: 1.4;
+        }
+        
+        .panel {
+          border-radius: 12px;
+          margin-bottom: 15px;
+        }
+        
+        .panel-header {
+          padding: 15px;
+          font-size: 1.1em;
+          border-radius: 12px 12px 0 0;
+        }
+        
+        .panel-content {
+          padding: 15px;
+        }
+        
+        .viewer-3d {
+          height: 300px;
+          border-radius: 8px;
+        }
+        
+        .slice-viewer {
+          height: 300px;
+          border-radius: 8px;
+        }
+        
+        .controls-section {
+          margin: 15px 0;
+          padding: 12px;
+          border-radius: 8px;
+        }
+        
+        .controls-title {
+          font-size: 1em;
+          margin-bottom: 12px;
         }
         
         .control-group {
           flex-direction: column;
+          gap: 10px;
+        }
+        
+        .toggle-control {
+          padding: 10px 15px;
+          border-radius: 25px;
+          font-size: 0.9em;
+          justify-content: center;
+          min-height: 44px;
+          border-width: 1px;
+        }
+        
+        .toggle-control input[type="checkbox"] {
+          transform: scale(1.3);
+          margin-right: 8px;
+        }
+        
+        .slider-container {
+          margin: 15px 0;
+        }
+        
+        .slider-label {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+        
+        .slice-info {
+          padding: 6px 12px;
+          font-size: 0.85em;
+          border-radius: 12px;
+        }
+        
+        .slider {
+          height: 10px;
+          border-radius: 5px;
+        }
+        
+        .slider::-webkit-slider-thumb {
+          width: 24px;
+          height: 24px;
+          border: 4px solid white;
+        }
+        
+        .slider::-moz-range-thumb {
+          width: 24px;
+          height: 24px;
+          border: 4px solid white;
+        }
+        
+        .download-button {
+          padding: 14px 20px;
+          font-size: 0.95em;
+          border-radius: 12px;
+          min-height: 48px;
+          width: 100%;
+          max-width: 280px;
+          margin: 10px auto;
+        }
+        
+        .status-area {
+          margin: 15px 10px;
+          padding: 15px;
+          border-radius: 8px;
+          font-size: 0.9em;
+          min-height: 48px;
+        }
+        
+        .loading-spinner {
+          width: 18px;
+          height: 18px;
+          border-width: 2px;
+          margin-right: 8px;
+        }
+      }
+      
+      /* Extra small devices (phones in portrait) */
+      @media (max-width: 480px) {
+        .header {
+          padding: 12px 8px;
+        }
+        
+        .header h1 {
+          font-size: 1.4em;
+        }
+        
+        .header .subtitle {
+          font-size: 0.85em;
+          padding: 0 5px;
+        }
+        
+        .upload-section {
+          margin: 10px 8px;
+          padding: 15px 12px;
+        }
+        
+        .upload-area {
+          padding: 20px 12px;
+        }
+        
+        .upload-area h3 {
+          font-size: 1.1em;
+        }
+        
+        .upload-button {
+          font-size: 0.9em;
+          padding: 11px 18px;
+          margin: 6px 3px;
+          min-width: 120px;
+        }
+        
+        .info-card {
+          margin: 12px 8px;
+          padding: 12px;
+          font-size: 12px;
+        }
+        
+        .analysis-container {
+          padding: 8px;
+          gap: 12px;
+        }
+        
+        .panel-header {
+          padding: 12px;
+          font-size: 1em;
+        }
+        
+        .panel-content {
+          padding: 12px;
+        }
+        
+        .viewer-3d, .slice-viewer {
+          height: 250px;
+        }
+        
+        .controls-section {
+          padding: 10px;
+          margin: 12px 0;
+        }
+        
+        .toggle-control {
+          padding: 12px 15px;
+          font-size: 0.85em;
+          min-height: 48px;
+        }
+        
+        .download-button {
+          padding: 15px 18px;
+          font-size: 0.9em;
+          min-height: 50px;
+        }
+      }
+      
+      /* Landscape orientation adjustments */
+      @media (max-width: 768px) and (orientation: landscape) {
+        .viewer-3d, .slice-viewer {
+          height: 220px;
+        }
+        
+        .upload-area {
+          padding: 20px 15px;
+        }
+        
+        .control-group {
+          flex-direction: row;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        
+        .toggle-control {
+          flex: 1;
+          min-width: 140px;
+        }
+      }
+      
+      /* Touch-friendly improvements */
+      @media (pointer: coarse) {
+        .toggle-control {
+          min-height: 48px;
+          padding: 12px 16px;
+        }
+        
+        .upload-button {
+          min-height: 48px;
+          padding: 14px 20px;
+        }
+        
+        .slider {
+          height: 12px;
+        }
+        
+        .slider::-webkit-slider-thumb {
+          width: 28px;
+          height: 28px;
+        }
+        
+        .slider::-moz-range-thumb {
+          width: 28px;
+          height: 28px;
+        }
+        
+        .download-button {
+          min-height: 52px;
         }
       }
       
       .hidden {
         display: none !important;
+      }
+      
+      /* Mobile view switcher */
+      .mobile-view-switcher {
+        padding: 10px;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      
+      .view-switch-container {
+        display: flex;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 4px;
+        max-width: 300px;
+        margin: 0 auto;
+      }
+      
+      .view-switch-btn {
+        flex: 1;
+        background: transparent;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #6c757d;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 44px;
+      }
+      
+      .view-switch-btn.active {
+        background: #007bff;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+      }
+      
+      .view-switch-btn:hover:not(.active) {
+        background: #e9ecef;
+        color: #495057;
+      }
+      
+      .view-switch-btn i {
+        font-size: 16px;
+      }
+      
+      .view-switch-btn span {
+        font-size: 13px;
       }
     </style>
   </head>
@@ -451,9 +866,23 @@
     </div>
 
     <div id="mainContent" class="main-content">
+      <!-- Mobile view switcher -->
+      <div class="mobile-view-switcher" id="mobileViewSwitcher" style="display: none;">
+        <div class="view-switch-container">
+          <button class="view-switch-btn active" data-view="3d">
+            <i class="fas fa-cube"></i>
+            <span>3D View</span>
+          </button>
+          <button class="view-switch-btn" data-view="slice">
+            <i class="fas fa-layer-group"></i>
+            <span>Slice View</span>
+          </button>
+        </div>
+      </div>
+      
       <div class="analysis-container">
         <!-- Left Panel: 3D Viewer -->
-        <div class="panel">
+        <div class="panel panel-3d">
           <div class="panel-header">
             <i class="fas fa-cube"></i>
             3D Volumetric Reconstruction
@@ -495,7 +924,7 @@
         </div>
 
         <!-- Right Panel: Layer Navigation -->
-        <div class="panel">
+        <div class="panel panel-slice">
           <div class="panel-header">
             <i class="fas fa-layer-group"></i>
             Layer-by-Layer Analysis
@@ -757,6 +1186,62 @@
         envIndicator.style.color = 'white';
       }
 
+      // Mobile view switcher functionality
+      function initializeMobileViewSwitcher() {
+        const viewSwitcher = document.getElementById('mobileViewSwitcher');
+        const viewButtons = viewSwitcher.querySelectorAll('.view-switch-btn');
+        const panel3D = document.querySelector('.panel-3d');
+        const panelSlice = document.querySelector('.panel-slice');
+        
+        // Check if we're on mobile
+        function isMobile() {
+          return window.innerWidth <= 768;
+        }
+        
+        // Switch between views
+        function switchView(targetView) {
+          viewButtons.forEach(btn => btn.classList.remove('active'));
+          document.querySelector(`[data-view="${targetView}"]`).classList.add('active');
+          
+          if (targetView === '3d') {
+            panel3D.classList.remove('mobile-hidden');
+            panelSlice.classList.remove('mobile-active');
+          } else {
+            panel3D.classList.add('mobile-hidden');
+            panelSlice.classList.add('mobile-active');
+          }
+        }
+        
+        // Add event listeners
+        viewButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const view = btn.dataset.view;
+            switchView(view);
+          });
+        });
+        
+        // Handle window resize
+        function handleResize() {
+          if (isMobile()) {
+            viewSwitcher.style.display = 'block';
+          } else {
+            viewSwitcher.style.display = 'none';
+            // Reset panel visibility for desktop
+            panel3D.classList.remove('mobile-hidden');
+            panelSlice.classList.remove('mobile-active');
+          }
+        }
+        
+        // Initial setup
+        handleResize();
+        
+        // Listen for resize events
+        window.addEventListener('resize', handleResize);
+      }
+      
+      // Initialize mobile functionality when page loads
+      document.addEventListener('DOMContentLoaded', initializeMobileViewSwitcher);
+
       // Enhanced drag and drop functionality
       uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -777,6 +1262,27 @@
           updateFileDisplay(files[0]);
         } else {
           updateStatus('Please drop a ZIP file containing DICOM (.dcm) or MATLAB (.mat) files', 'error');
+        }
+      });
+
+      // Mobile-friendly touch events for upload area
+      let touchStartY = 0;
+      let touchEndY = 0;
+      
+      uploadArea.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        uploadArea.style.transform = 'scale(0.98)';
+        uploadArea.style.transition = 'transform 0.1s ease';
+      });
+      
+      uploadArea.addEventListener('touchend', (e) => {
+        touchEndY = e.changedTouches[0].clientY;
+        uploadArea.style.transform = 'scale(1)';
+        
+        // If it's a tap (not a scroll), trigger file selection
+        const touchDiff = Math.abs(touchEndY - touchStartY);
+        if (touchDiff < 10) {
+          document.getElementById('dicomZip').click();
         }
       });
 
@@ -1027,10 +1533,16 @@
             return;
           }
           
-          // Setup canvas
+          // Setup canvas with device pixel ratio for crisp display on mobile
           const container = document.getElementById('sliceViewer');
-          sliceCanvas.width = container.clientWidth;
-          sliceCanvas.height = container.clientHeight;
+          const devicePixelRatio = window.devicePixelRatio || 1;
+          
+          sliceCanvas.width = container.clientWidth * devicePixelRatio;
+          sliceCanvas.height = container.clientHeight * devicePixelRatio;
+          sliceCanvas.style.width = container.clientWidth + 'px';
+          sliceCanvas.style.height = container.clientHeight + 'px';
+          
+          ctx.scale(devicePixelRatio, devicePixelRatio);
           
           // Load and draw base slice
           const img = new Image();
@@ -1038,11 +1550,13 @@
             ctx.clearRect(0, 0, sliceCanvas.width, sliceCanvas.height);
             
             // Calculate scaling to fit canvas
-            const scale = Math.min(sliceCanvas.width / img.width, sliceCanvas.height / img.height);
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            const scale = Math.min(containerWidth / img.width, containerHeight / img.height);
             const scaledWidth = img.width * scale;
             const scaledHeight = img.height * scale;
-            const x = (sliceCanvas.width - scaledWidth) / 2;
-            const y = (sliceCanvas.height - scaledHeight) / 2;
+            const x = (containerWidth - scaledWidth) / 2;
+            const y = (containerHeight - scaledHeight) / 2;
             
             ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
             
@@ -1053,6 +1567,10 @@
           
         } catch (error) {
           console.error('Error loading slice:', error);
+          // Show user-friendly error message on mobile
+          if (window.innerWidth <= 768) {
+            updateStatus('Failed to load brain slice. Please try again.', 'error');
+          }
         }
       }
 
@@ -1284,6 +1802,20 @@
       }
       
       function loadMeshes(brainOBJText, anomaliesOBJText, tumorsOBJText, cystsOBJText) {
+        console.log('loadMeshes called with:');
+        console.log('- brainOBJText length:', brainOBJText ? brainOBJText.length : 'null');
+        console.log('- anomaliesOBJText length:', anomaliesOBJText ? anomaliesOBJText.length : 'null');
+        console.log('- tumorsOBJText length:', tumorsOBJText ? tumorsOBJText.length : 'null');
+        console.log('- cystsOBJText length:', cystsOBJText ? cystsOBJText.length : 'null');
+        
+        // Check if we have any actual mesh data
+        const hasAnyMesh = brainOBJText || anomaliesOBJText || tumorsOBJText || cystsOBJText;
+        if (!hasAnyMesh) {
+          console.warn('No mesh data provided, creating fallback geometry');
+          createFallbackGeometry();
+          return;
+        }
+        
         // Check if OBJLoader is available
         if (typeof THREE.OBJLoader === 'undefined') {
           console.error('OBJLoader not available, creating fallback visualization...');
@@ -1295,16 +1827,50 @@
         const loader = new THREE.OBJLoader();
         console.log('OBJLoader initialized successfully');
         
+        let meshesLoaded = 0;
+        const totalMeshes = [brainOBJText, tumorsOBJText, cystsOBJText, anomaliesOBJText].filter(Boolean).length;
+        console.log(`Expected to load ${totalMeshes} meshes`);
+        
+        function onMeshLoaded() {
+          meshesLoaded++;
+          console.log(`Loaded ${meshesLoaded}/${totalMeshes} meshes`);
+          
+          if (meshesLoaded === totalMeshes) {
+            // All meshes loaded, center and scale the scene
+            console.log('All meshes loaded, centering scene...');
+            centerAndScaleScene();
+            
+            // Setup visibility controls
+            setupEnhancedControls();
+            
+            // Update status
+            updateStatus('3D models loaded successfully! Use mouse to rotate, zoom, and pan.', 'success');
+            
+            // Force initial render
+            if (renderer && scene && camera) {
+              renderer.render(scene, camera);
+              console.log('Forced initial render complete');
+            }
+            console.log('All meshes loaded and scene ready');
+          }
+        }
+        
         // Load brain mesh
         if (brainOBJText) {
           console.log('Loading brain mesh...');
+          console.log('Brain OBJ preview:', brainOBJText.substring(0, 200) + '...');
           try {
             const brain = loader.parse(brainOBJText);
+            console.log('Brain mesh parsed successfully');
+            
+            let meshCount = 0;
             brain.traverse((child) => { 
-              if (child.isMesh) { 
+              if (child.isMesh) {
+                meshCount++;
+                console.log(`Brain mesh ${meshCount}: vertices=${child.geometry?.attributes?.position?.count}, faces=${child.geometry?.attributes?.position?.count ? child.geometry.attributes.position.count / 3 : 'unknown'}`);
                 child.material = new THREE.MeshPhongMaterial({ 
                   color: 0xaaaaaa, 
-                  opacity: 0.4, 
+                  opacity: 0.6, 
                   transparent: true,
                   shininess: 30,
                   side: THREE.DoubleSide
@@ -1314,25 +1880,15 @@
               } 
             });
             
-            // Center and scale the brain
-            const box = new THREE.Box3().setFromObject(brain);
-            const center = box.getCenter(new THREE.Vector3());
-            brain.position.copy(center.multiplyScalar(-1));
-            
-            // Scale if needed
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 100) {
-              const scale = 100 / maxDim;
-              brain.scale.setScalar(scale);
-            }
-            
+            console.log(`Brain object contains ${meshCount} meshes`);
             brain.name = 'brain';
             scene.add(brain);
-            console.log('Brain mesh loaded successfully');
+            console.log('Brain mesh added to scene');
+            onMeshLoaded();
           } catch (error) {
             console.error('Error loading brain mesh:', error);
             updateStatus('Error loading brain mesh: ' + error.message, 'error');
+            onMeshLoaded(); // Still count as "loaded" to not block other meshes
           }
         }
 
@@ -1350,27 +1906,19 @@
                   shininess: 50,
                   side: THREE.DoubleSide
                 }); 
+                child.castShadow = true;
+                child.receiveShadow = true;
               } 
             });
             
-            // Center and scale the tumors to match brain
-            const box = new THREE.Box3().setFromObject(tumors);
-            const center = box.getCenter(new THREE.Vector3());
-            tumors.position.copy(center.multiplyScalar(-1));
-            
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 100) {
-              const scale = 100 / maxDim;
-              tumors.scale.setScalar(scale);
-            }
-            
             tumors.name = 'tumors';
             scene.add(tumors);
-            console.log('Tumor mesh loaded successfully');
+            console.log('Tumor mesh added to scene');
+            onMeshLoaded();
           } catch (error) {
             console.error('Error loading tumor mesh:', error);
             updateStatus('Error loading tumor mesh: ' + error.message, 'error');
+            onMeshLoaded();
           }
         }
 
@@ -1388,27 +1936,19 @@
                   shininess: 30,
                   side: THREE.DoubleSide
                 }); 
+                child.castShadow = true;
+                child.receiveShadow = true;
               } 
             });
             
-            // Center and scale the cysts to match brain
-            const box = new THREE.Box3().setFromObject(cysts);
-            const center = box.getCenter(new THREE.Vector3());
-            cysts.position.copy(center.multiplyScalar(-1));
-            
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 100) {
-              const scale = 100 / maxDim;
-              cysts.scale.setScalar(scale);
-            }
-            
             cysts.name = 'cysts';
             scene.add(cysts);
-            console.log('Cyst mesh loaded successfully');
+            console.log('Cyst mesh added to scene');
+            onMeshLoaded();
           } catch (error) {
             console.error('Error loading cyst mesh:', error);
             updateStatus('Error loading cyst mesh: ' + error.message, 'error');
+            onMeshLoaded();
           }
         }
 
@@ -1422,32 +1962,107 @@
                 child.material = new THREE.MeshPhongMaterial({ 
                   color: 0xffff00, // Yellow for other anomalies
                   opacity: 0.6,
-                  transparent: true
+                  transparent: true,
+                  side: THREE.DoubleSide
                 }); 
+                child.castShadow = true;
+                child.receiveShadow = true;
               } 
             });
             anomalies.name = 'anomalies';
             scene.add(anomalies);
-            console.log('Anomalies mesh loaded successfully');
+            console.log('Anomalies mesh added to scene');
+            onMeshLoaded();
           } catch (error) {
             console.error('Error loading anomalies mesh:', error);
             updateStatus('Error loading anomalies mesh: ' + error.message, 'error');
+            onMeshLoaded();
           }
         }
         
-        // After loading all meshes, update status
-        updateStatus('3D models loaded successfully! Use controls to explore.', 'success');
+        // If no meshes to load, show fallback
+        if (totalMeshes === 0) {
+          console.log('No meshes provided, creating fallback geometry');
+          createFallbackGeometry();
+        }
+      }
+      
+      function centerAndScaleScene() {
+        if (!scene || !camera) return;
         
-        // Add a simple coordinate helper to visualize orientation
-        if (typeof THREE.AxesHelper !== 'undefined') {
-          const axesHelper = new THREE.AxesHelper(50);
-          scene.add(axesHelper);
+        console.log('Centering and scaling scene...');
+        
+        // Debug: List all objects in scene
+        console.log('Objects in scene:');
+        scene.traverse((child) => {
+          if (child.isMesh) {
+            console.log(`  - Mesh: ${child.name || 'unnamed'}, visible: ${child.visible}, vertices: ${child.geometry?.attributes?.position?.count || 'unknown'}`);
+          }
+        });
+        
+        // Calculate bounding box of all objects in scene
+        const box = new THREE.Box3();
+        const meshObjects = [];
+        
+        scene.traverse((child) => {
+          if (child.isMesh && child.name !== 'fallback-brain') {
+            meshObjects.push(child);
+            box.expandByObject(child);
+          }
+        });
+        
+        console.log(`Found ${meshObjects.length} mesh objects for centering`);
+        
+        if (meshObjects.length === 0) {
+          console.log('No mesh objects found for centering, creating fallback');
+          createFallbackGeometry();
+          return;
         }
         
-        // Force a render to make sure something appears
-        if (renderer && scene && camera) {
-          renderer.render(scene, camera);
-          console.log('Initial render completed');
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        console.log(`Scene bounds: center=${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)}, size=${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)}, maxDim=${maxDim.toFixed(2)}`);
+        
+        // Move all meshes to center them at origin
+        meshObjects.forEach(mesh => {
+          mesh.position.sub(center);
+        });
+        
+        // Scale if too large
+        if (maxDim > 200) {
+          const scale = 200 / maxDim;
+          console.log(`Scaling scene by factor: ${scale.toFixed(3)}`);
+          meshObjects.forEach(mesh => {
+            mesh.scale.setScalar(scale);
+          });
+        }
+        
+        // Position camera appropriately
+        const distance = Math.max(maxDim * 1.5, 300);
+        camera.position.set(distance, distance, distance);
+        camera.lookAt(0, 0, 0);
+        
+        // Update camera controls target if available
+        if (controls && controls.target) {
+          controls.target.set(0, 0, 0);
+          controls.update();
+        }
+        
+        console.log(`Camera positioned at: ${camera.position.x.toFixed(2)}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}`);
+        console.log('Scene centering and scaling completed');
+        
+        // Add coordinate axes for reference
+        if (typeof THREE.AxesHelper !== 'undefined') {
+          // Remove existing axes helper
+          const existingAxes = scene.getObjectByName('axes');
+          if (existingAxes) scene.remove(existingAxes);
+          
+          const axesHelper = new THREE.AxesHelper(Math.max(50, maxDim * 0.3));
+          axesHelper.name = 'axes';
+          scene.add(axesHelper);
+          console.log('Added coordinate axes for reference');
         }
       }
       
@@ -1497,10 +2112,17 @@
       function animate() {
         requestAnimationFrame(animate);
         
+        // Update controls
         if (controls && controls.update) {
           controls.update();
         }
         
+        // Gentle rotation when no user interaction (optional)
+        if (scene && camera && !document.querySelector('.viewer-3d:hover')) {
+          scene.rotation.y += 0.001;
+        }
+        
+        // Render the scene
         if (renderer && scene && camera) {
           renderer.render(scene, camera);
         }
@@ -1510,132 +2132,65 @@
       window.addEventListener('resize', () => {
         if (camera && renderer) {
           const container = document.getElementById('viewer');
-          const containerRect = container.getBoundingClientRect();
-          const width = containerRect.width || 800;
-          const height = containerRect.height || 600;
-          
-          camera.aspect = width / height;
-          camera.updateProjectionMatrix();
-          renderer.setSize(width, height);
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const width = containerRect.width || 800;
+            const height = containerRect.height || 600;
+            
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            
+            console.log(`Resized renderer to: ${width}x${height}`);
+          }
         }
       });
 
       function setupEnhancedControls() {
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
+        console.log('Setting up enhanced mesh visibility controls...');
         
-        // Enhanced lighting
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
-        scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 10, 5);
-        directionalLight.castShadow = true;
-        scene.add(directionalLight);
-        
-        const pointLight = new THREE.PointLight(0xffffff, 0.5);
-        pointLight.position.set(-10, -10, -5);
-        scene.add(pointLight);
-
-        // Check if OBJLoader is available
-        if (typeof THREE.OBJLoader === 'undefined') {
-          updateStatus('OBJLoader not loaded. Please refresh the page.', 'error');
-          return;
-        }
-        
-        const loader = new THREE.OBJLoader();
-        
-        // Load brain with enhanced material
-        const brain = loader.parse(brainOBJText);
-        brain.traverse((c) => { 
-          if (c.isMesh) { 
-            c.material = new THREE.MeshPhongMaterial({ 
-              color: 0xcccccc, 
-              opacity: 0.7, 
-              transparent: true,
-              shininess: 30
-            }); 
-            c.castShadow = true;
-            c.receiveShadow = true;
-          } 
+        // Enhanced visibility controls with debugging
+        document.getElementById('showBrain').addEventListener('change', (e) => {
+          const brain = scene.getObjectByName('brain'); 
+          if (brain) {
+            brain.visible = e.target.checked;
+            console.log(`Brain visibility: ${e.target.checked}`);
+          } else {
+            console.log('Brain mesh not found in scene');
+          }
         });
-        brain.name = 'brain';
-        scene.add(brain);
-
-        // Load anomalies (general)
-        if (anomaliesOBJText) {
-          const anomalies = loader.parse(anomaliesOBJText);
-          anomalies.traverse((c) => { 
-            if (c.isMesh) { 
-              c.material = new THREE.MeshPhongMaterial({ 
-                color: 0xff6600,
-                shininess: 50
-              }); 
-              c.castShadow = true;
-            } 
-          });
-          anomalies.name = 'anomalies';
-          scene.add(anomalies);
-        }
-
-        // Load tumors (specific)
-        if (tumorsOBJText) {
-          const tumors = loader.parse(tumorsOBJText);
-          tumors.traverse((c) => { 
-            if (c.isMesh) { 
-              c.material = new THREE.MeshPhongMaterial({ 
-                color: 0xff0000,
-                shininess: 50
-              }); 
-              c.castShadow = true;
-            } 
-          });
-          tumors.name = 'tumors';
-          scene.add(tumors);
-        }
-
-        // Load cysts (specific)
-        if (cystsOBJText) {
-          const cysts = loader.parse(cystsOBJText);
-          cysts.traverse((c) => { 
-            if (c.isMesh) { 
-              c.material = new THREE.MeshPhongMaterial({ 
-                color: 0x0066ff,
-                shininess: 50
-              }); 
-              c.castShadow = true;
-            } 
-          });
-          cysts.name = 'cysts';
-          scene.add(cysts);
-        }
-
-        // Enhanced animation
-        let mouseX = 0, mouseY = 0;
-        const windowHalfX = container.clientWidth / 2;
-        const windowHalfY = container.clientHeight / 2;
-
-        container.addEventListener('mousemove', (event) => {
-          mouseX = (event.clientX - windowHalfX) / windowHalfX;
-          mouseY = (event.clientY - windowHalfY) / windowHalfY;
-        });
-
-        const animate = function () {
-          requestAnimationFrame(animate);
-          
-          // Smooth rotation based on mouse position
-          scene.rotation.y += (mouseX * 0.01 - scene.rotation.y) * 0.05;
-          scene.rotation.x += (-mouseY * 0.01 - scene.rotation.x) * 0.05;
-          
-          // Gentle automatic rotation
-          scene.rotation.y += 0.002;
-          
-          renderer.render(scene, camera);
-        }
         
-        // Setup enhanced controls with visual feedback
-        setupEnhancedControls();
+        document.getElementById('showAnomalies').addEventListener('change', (e) => {
+          const anomalies = scene.getObjectByName('anomalies'); 
+          if (anomalies) {
+            anomalies.visible = e.target.checked;
+            console.log(`Anomalies visibility: ${e.target.checked}`);
+          } else {
+            console.log('Anomalies mesh not found in scene');
+          }
+        });
+        
+        document.getElementById('showTumors').addEventListener('change', (e) => {
+          const tumors = scene.getObjectByName('tumors'); 
+          if (tumors) {
+            tumors.visible = e.target.checked;
+            console.log(`Tumors visibility: ${e.target.checked}`);
+          } else {
+            console.log('Tumors mesh not found in scene');
+          }
+        });
+        
+        document.getElementById('showCysts').addEventListener('change', (e) => {
+          const cysts = scene.getObjectByName('cysts'); 
+          if (cysts) {
+            cysts.visible = e.target.checked;
+            console.log(`Cysts visibility: ${e.target.checked}`);
+          } else {
+            console.log('Cysts mesh not found in scene');
+          }
+        });
+        
+        console.log('Enhanced controls setup completed');
       }
 
       function setupEnhancedControls() {
